@@ -1,0 +1,178 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
+import { Observable, catchError, throwError } from 'rxjs';
+import { Photo, PhotoUploadResponse, PhotoUploadMultipleResponse } from '../models/photo.model';
+
+/**
+ * Service Angular pour communiquer avec l'API Spring Boot.
+ * Gère toutes les opérations CRUD sur les photos.
+ */
+@Injectable({
+  providedIn: 'root'
+})
+export class PhotoService {
+  
+  private readonly http = inject(HttpClient);
+  
+  // URL de base de l'API Spring Boot
+  private readonly apiUrl = 'http://localhost:8080/api/photos';
+  
+  // Headers pour les requêtes
+  private readonly httpOptions = {
+    headers: new HttpHeaders({
+      'Content-Type': 'application/json'
+    })
+  };
+
+  /**
+   * Upload une photo.
+   * 
+   * @param file le fichier à uploader
+   * @returns Observable avec la réponse de l'API
+   */
+  uploadPhoto(file: File): Observable<Photo> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    
+    return this.http.post<Photo>(`${this.apiUrl}/upload`, formData).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Upload plusieurs photos.
+   * 
+   * @param files les fichiers à uploader
+   * @returns Observable avec la liste des photos uploadées
+   */
+  uploadPhotos(files: File[]): Observable<Photo[]> {
+    const formData = new FormData();
+    files.forEach((file, index) => {
+      formData.append('files', file, file.name);
+    });
+    
+    return this.http.post<Photo[]>(`${this.apiUrl}/upload/multiple`, formData).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Récupère la liste de toutes les photos.
+   * 
+   * @returns Observable avec la liste des photos
+   */
+  getAllPhotos(): Observable<Photo[]> {
+    return this.http.get<Photo[]>(this.apiUrl).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Récupère une photo par son ID.
+   * 
+   * @param id l'ID de la photo
+   * @returns Observable avec la photo correspondante
+   */
+  getPhotoById(id: string): Observable<Photo> {
+    return this.http.get<Photo>(`${this.apiUrl}/${id}`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Télécharge une photo.
+   * 
+   * @param id l'ID de la photo à télécharger
+   * @returns Observable avec le blob du fichier
+   */
+  downloadPhoto(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${id}/download`, {
+      responseType: 'blob'
+    }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Supprime une photo.
+   * 
+   * @param id l'ID de la photo à supprimer
+   * @returns Observable avec un message de confirmation
+   */
+  deletePhoto(id: string): Observable<string> {
+    return this.http.delete<string>(`${this.apiUrl}/${id}`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Récupère les métadonnées d'une photo.
+   * 
+   * @param id l'ID de la photo
+   * @returns Observable avec les métadonnées
+   */
+  getPhotoMetadata(id: string): Observable<Photo> {
+    return this.http.get<Photo>(`${this.apiUrl}/${id}/metadata`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Vérifie si le service est opérationnel.
+   * 
+   * @returns Observable avec un message de statut
+   */
+  checkStatus(): Observable<string> {
+    return this.http.get<string>(`${this.apiUrl}/status`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Récupère les photos dans une plage de dates.
+   * 
+   * @param fromDate date de début (ISO string)
+   * @param toDate date de fin (ISO string)
+   * @returns Observable avec la liste des photos filtrées
+   */
+  getPhotosByDateRange(fromDate: string, toDate: string): Observable<Photo[]> {
+    return this.http.get<Photo[]>(`${this.apiUrl}/by-date`, {
+      params: {
+        fromDate: fromDate,
+        toDate: toDate
+      }
+    }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Gère les erreurs HTTP.
+   * 
+   * @param error l'erreur HTTP
+   * @returns Observable avec l'erreur
+   */
+  private handleError(error: HttpErrorResponse): Observable<never> {
+    let errorMessage = 'Une erreur inconnue est survenue';
+    
+    if (error.error instanceof ErrorEvent) {
+      // Erreur côté client
+      errorMessage = `Erreur: ${error.error.message}`;
+    } else {
+      // Erreur côté serveur
+      if (error.status === 400) {
+        errorMessage = 'Requête invalide. Vérifiez les données envoyées.';
+      } else if (error.status === 404) {
+        errorMessage = 'Ressource non trouvée.';
+      } else if (error.status === 403 || error.status === 401) {
+        errorMessage = 'Non autorisé. Accès refusé.';
+      } else if (error.status === 500) {
+        errorMessage = 'Erreur interne du serveur.';
+      } else {
+        errorMessage = `Code d\'erreur: ${error.status}\nMessage: ${error.message}`;
+      }
+    }
+    
+    return throwError(() => new Error(errorMessage));
+  }
+}
