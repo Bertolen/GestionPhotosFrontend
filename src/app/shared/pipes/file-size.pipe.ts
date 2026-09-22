@@ -28,16 +28,16 @@ export class FileSizePipe implements PipeTransform {
     let size = Math.abs(bytes);
     let unitIndex = 0;
     
-    while (size >= this.THRESHOLD && unitIndex < this.UNITS.length - 1) {
-      size /= this.THRESHOLD;
+    while (size >= FileSizePipe.THRESHOLD && unitIndex < FileSizePipe.UNITS.length - 1) {
+      size /= FileSizePipe.THRESHOLD;
       unitIndex++;
     }
-    
+
     // Formater avec 2 décimales pour les valeurs non entières
     const formattedSize = size >= 100 || unitIndex === 0 
         ? size.toFixed(0)
         : size.toFixed(2);
     
-    return `${formattedSize} ${this.UNITS[unitIndex]}`;
+    return `${formattedSize} ${FileSizePipe.UNITS[unitIndex]}`;
   }
 }
