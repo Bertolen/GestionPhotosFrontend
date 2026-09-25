@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { PhotoService } from '../../shared/services/photo.service';
 import { Photo } from '../../shared/models/photo.model';
@@ -9,7 +10,7 @@ import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
 @Component({
   selector: 'app-photo-gallery',
   standalone: true,
-  imports: [CommonModule, DateFormatPipe, DateOnlyPipe, FileSizePipe],
+  imports: [CommonModule, FormsModule, DateFormatPipe, DateOnlyPipe, FileSizePipe],
   template: `
     <section class="gallery-container">
       <header class="gallery-header">
@@ -22,8 +23,38 @@ import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
         </button>
       </header>
 
+      <form class="date-filter" (ngSubmit)="applyDateFilter()">
+        <div class="date-field">
+          <label for="from-date">Date de début</label>
+          <input id="from-date" name="fromDate" type="date" [(ngModel)]="fromDate" />
+        </div>
+        <div class="date-field">
+          <label for="to-date">Date de fin</label>
+          <input id="to-date" name="toDate" type="date" [(ngModel)]="toDate" />
+        </div>
+        <button type="submit" class="filter-button" [disabled]="loading">
+          Filtrer
+        </button>
+        <button
+          *ngIf="fromDate || toDate"
+          type="button"
+          class="clear-filter-button"
+          (click)="clearDateFilter()"
+          [disabled]="loading"
+        >
+          Réinitialiser
+        </button>
+      </form>
+
       <div *ngIf="photos.length > 0" class="selection-toolbar">
         <span>{{ selectedPhotoIds.size }} photo(s) sélectionnée(s)</span>
+        <button
+          type="button"
+          class="select-all-button"
+          (click)="toggleSelectAll()"
+        >
+          {{ areAllPhotosSelected() ? 'Tout désélectionner' : 'Tout sélectionner' }}
+        </button>
         <button
           type="button"
           class="download-button"
@@ -121,6 +152,61 @@ import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
       font-weight: 600;
     }
 
+    .date-filter {
+      display: flex;
+      align-items: end;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding: 16px;
+      background: #fafafa;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+    }
+
+    .date-field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .date-field label {
+      color: #455a64;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .date-field input {
+      border: 1px solid #b0bec5;
+      border-radius: 6px;
+      padding: 9px 10px;
+      font: inherit;
+    }
+
+    .filter-button,
+    .clear-filter-button {
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .filter-button {
+      background: #1565c0;
+      color: white;
+    }
+
+    .clear-filter-button {
+      background: #eceff1;
+      color: #455a64;
+    }
+
+    .filter-button:disabled,
+    .clear-filter-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
     .selection-toolbar {
       display: flex;
       align-items: center;
@@ -135,14 +221,22 @@ import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
       font-weight: 600;
     }
 
+    .select-all-button,
     .download-button {
       border: none;
-      background: #4caf50;
       color: white;
       padding: 10px 16px;
       border-radius: 8px;
       cursor: pointer;
       font-weight: 600;
+    }
+
+    .select-all-button {
+      background: #1565c0;
+    }
+
+    .download-button {
+      background: #4caf50;
     }
 
     .download-button:disabled {
@@ -250,6 +344,8 @@ export class PhotoGalleryComponent implements OnInit {
   photos: Photo[] = [];
   selectedPhotoIds = new Set<string>();
   failedImageIds = new Set<string>();
+  fromDate = '';
+  toDate = '';
   loading = false;
   downloading = false;
   errorMessage = '';
@@ -262,7 +358,14 @@ export class PhotoGalleryComponent implements OnInit {
     this.loading = true;
     this.errorMessage = '';
 
-    this.photoService.getAllPhotos().subscribe({
+    const request = this.fromDate || this.toDate
+      ? this.photoService.getPhotosByDateRange(
+          this.fromDate ? `${this.fromDate}T00:00:00` : '0001-01-01T00:00:00',
+          this.toDate ? `${this.toDate}T23:59:59` : '9999-12-31T23:59:59'
+        )
+      : this.photoService.getAllPhotos();
+
+    request.subscribe({
       next: (photos) => {
         this.photos = photos;
         this.selectedPhotoIds.clear();
@@ -274,6 +377,21 @@ export class PhotoGalleryComponent implements OnInit {
         this.errorMessage = err.message || 'Impossible de charger la galerie.';
       }
     });
+  }
+
+  applyDateFilter(): void {
+    if (this.fromDate && this.toDate && this.fromDate > this.toDate) {
+      this.errorMessage = 'La date de début doit être antérieure ou égale à la date de fin.';
+      return;
+    }
+
+    this.loadPhotos();
+  }
+
+  clearDateFilter(): void {
+    this.fromDate = '';
+    this.toDate = '';
+    this.loadPhotos();
   }
 
   getPhotoUrl(photoId: string): string {
@@ -290,6 +408,20 @@ export class PhotoGalleryComponent implements OnInit {
     } else {
       this.selectedPhotoIds.add(photoId);
     }
+  }
+
+  areAllPhotosSelected(): boolean {
+    return this.photos.length > 0
+      && this.photos.every((photo) => this.selectedPhotoIds.has(photo.id));
+  }
+
+  toggleSelectAll(): void {
+    if (this.areAllPhotosSelected()) {
+      this.photos.forEach((photo) => this.selectedPhotoIds.delete(photo.id));
+      return;
+    }
+
+    this.photos.forEach((photo) => this.selectedPhotoIds.add(photo.id));
   }
 
   downloadSelectedPhotos(): void {
