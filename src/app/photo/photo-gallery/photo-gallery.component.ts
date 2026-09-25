@@ -98,6 +98,10 @@ import { DateFormatPipe } from '../../shared/pipes/date-format.pipe';
         >
           <h2 id="download-modal-title">Confirmer le téléchargement</h2>
           <p>Êtes-vous sûr de vouloir télécharger {{ selectedPhotoIds.size }} photo(s) ?</p>
+          <label *ngIf="selectedPhotoIds.size > 1" class="individual-download-option">
+            <input type="checkbox" [(ngModel)]="downloadIndividually" />
+            <span>Télécharger les photos individuellement</span>
+          </label>
           <div class="download-modal-actions">
             <button type="button" class="cancel-button" (click)="cancelDownload()">
               Annuler
@@ -327,6 +331,22 @@ import { DateFormatPipe } from '../../shared/pipes/date-format.pipe';
       margin: 0;
       color: #455a64;
       line-height: 1.5;
+    }
+
+    .individual-download-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 16px;
+      color: #455a64;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    .individual-download-option input {
+      width: 16px;
+      height: 16px;
+      accent-color: #1565c0;
     }
 
     .download-modal-actions {
@@ -569,6 +589,7 @@ export class PhotoGalleryComponent implements OnInit {
   pendingToDate = '';
   dateFilterOpen = false;
   downloadConfirmationOpen = false;
+  downloadIndividually = false;
   loading = false;
   downloading = false;
   errorMessage = '';
@@ -626,6 +647,7 @@ export class PhotoGalleryComponent implements OnInit {
 
   openDownloadConfirmation(): void {
     if (this.selectedPhotoIds.size > 0 && !this.downloading) {
+      this.downloadIndividually = false;
       this.downloadConfirmationOpen = true;
     }
   }
@@ -636,6 +658,11 @@ export class PhotoGalleryComponent implements OnInit {
 
   confirmDownload(): void {
     this.downloadConfirmationOpen = false;
+    if (this.selectedPhotoIds.size > 1 && !this.downloadIndividually) {
+      this.downloadSelectedPhotosAsZip();
+      return;
+    }
+
     this.downloadSelectedPhotos();
   }
 
@@ -697,6 +724,35 @@ export class PhotoGalleryComponent implements OnInit {
           link.click();
           URL.revokeObjectURL(url);
         });
+        this.downloading = false;
+      },
+      error: (err: Error) => {
+        this.downloading = false;
+        this.errorMessage = err.message || 'Impossible de télécharger la sélection.';
+      }
+    });
+  }
+
+  private downloadSelectedPhotosAsZip(): void {
+    const selectedPhotoIds = this.photos
+      .filter((photo) => this.selectedPhotoIds.has(photo.id))
+      .map((photo) => photo.id);
+
+    if (selectedPhotoIds.length < 2 || this.downloading) {
+      return;
+    }
+
+    this.downloading = true;
+    this.errorMessage = '';
+
+    this.photoService.downloadPhotosBulk(selectedPhotoIds).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'photos.zip';
+        link.click();
+        URL.revokeObjectURL(url);
         this.downloading = false;
       },
       error: (err: Error) => {

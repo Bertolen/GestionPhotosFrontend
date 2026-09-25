@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Observable, catchError, throwError } from 'rxjs';
 import { Photo, PhotoUploadResponse, PhotoUploadMultipleResponse } from '../models/photo.model';
 
@@ -87,6 +87,26 @@ export class PhotoService {
    */
   downloadPhoto(id: string): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/${id}/download`, {
+      responseType: 'blob'
+    }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Télécharge plusieurs photos dans une archive ZIP.
+   *
+   * @param ids identifiants des photos à télécharger
+   * @returns Observable avec le fichier ZIP
+   */
+  downloadPhotosBulk(ids: string[]): Observable<Blob> {
+    let params = new HttpParams();
+    ids.forEach((id) => {
+      params = params.append('photoIds', id);
+    });
+
+    return this.http.post(`${this.apiUrl}/download/bulk`, null, {
+      params,
       responseType: 'blob'
     }).pipe(
       catchError(this.handleError)
