@@ -139,6 +139,49 @@ import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
       background: #e8f5e9;
       color: #2e7d32;
     }
+
+    @media (max-width: 600px) {
+      .upload-container {
+        padding: 12px 0;
+      }
+
+      .upload-card {
+        padding: 16px;
+        border-radius: 10px;
+      }
+
+      h1 {
+        margin-bottom: 16px;
+        font-size: 1.5rem;
+      }
+
+      .drop-zone {
+        min-height: 110px;
+        margin-bottom: 12px;
+        padding: 16px;
+        font-size: 0.9rem;
+      }
+
+      .file-list {
+        margin-bottom: 12px;
+        font-size: 0.85rem;
+      }
+
+      .file-list h3 {
+        font-size: 1rem;
+      }
+
+      .upload-button {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+      }
+
+      .status-box {
+        margin-top: 12px;
+        padding: 10px 12px;
+        font-size: 0.85rem;
+      }
+    }
   `]
 })
 export class PhotoUploadComponent {

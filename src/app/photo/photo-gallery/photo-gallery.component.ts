@@ -406,7 +406,7 @@ import { DateFormatPipe } from '../../shared/pipes/date-format.pipe';
 
     .gallery-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 20px;
     }
 
@@ -459,6 +459,101 @@ import { DateFormatPipe } from '../../shared/pipes/date-format.pipe';
     .creation-date {
       color: #455a64;
       font-size: 0.95rem;
+    }
+
+    @media (max-width: 900px) {
+      .gallery-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 600px) {
+      .gallery-container {
+        padding: 12px 0;
+      }
+
+      .gallery-header {
+        margin-bottom: 14px;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      .refresh-button,
+      .filter-button,
+      .clear-filter-button,
+      .select-all-button,
+      .download-button {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+      }
+
+      .gallery-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .date-filter {
+        align-items: stretch;
+        flex-wrap: nowrap;
+        gap: 8px;
+      }
+
+      .date-filter .filter-button,
+      .date-filter .clear-filter-button {
+        flex: 1;
+        width: auto;
+      }
+
+      .selection-toolbar {
+        justify-content: stretch;
+        margin-left: 0;
+      }
+
+      .selection-toolbar button {
+        flex: 1;
+      }
+
+      .gallery-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .image-preview {
+        height: 90px;
+      }
+
+      .photo-info {
+        padding: 6px;
+      }
+
+      .creation-date {
+        display: block;
+        font-size: 0.65rem;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+
+      .date-modal,
+      .download-modal {
+        padding: 18px;
+      }
+
+      .date-modal-actions,
+      .download-modal-actions {
+        gap: 8px;
+        margin-top: 18px;
+      }
+
+      .date-modal-actions button,
+      .download-modal-actions button {
+        flex: 1;
+        padding: 9px 10px;
+        font-size: 0.85rem;
+      }
     }
   `]
 })
