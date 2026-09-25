@@ -4,13 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { PhotoService } from '../../shared/services/photo.service';
 import { Photo } from '../../shared/models/photo.model';
-import { DateFormatPipe, DateOnlyPipe } from '../../shared/pipes/date-format.pipe';
-import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
+import { DateFormatPipe } from '../../shared/pipes/date-format.pipe';
 
 @Component({
   selector: 'app-photo-gallery',
   standalone: true,
-  imports: [CommonModule, FormsModule, DateFormatPipe, DateOnlyPipe, FileSizePipe],
+  imports: [CommonModule, FormsModule, DateFormatPipe],
   template: `
     <section class="gallery-container">
       <header class="gallery-header">
@@ -23,46 +22,91 @@ import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
         </button>
       </header>
 
-      <form class="date-filter" (ngSubmit)="applyDateFilter()">
-        <div class="date-field">
-          <label for="from-date">Date de début</label>
-          <input id="from-date" name="fromDate" type="date" [(ngModel)]="fromDate" />
+      <div class="gallery-toolbar">
+        <div class="date-filter">
+          <button type="button" class="filter-button" (click)="openDateFilter()">
+            Filtrer par date
+          </button>
+          <button
+            *ngIf="fromDate || toDate"
+            type="button"
+            class="clear-filter-button"
+            (click)="clearDateFilter()"
+            [disabled]="loading"
+          >
+            Réinitialiser
+          </button>
         </div>
-        <div class="date-field">
-          <label for="to-date">Date de fin</label>
-          <input id="to-date" name="toDate" type="date" [(ngModel)]="toDate" />
-        </div>
-        <button type="submit" class="filter-button" [disabled]="loading">
-          Filtrer
-        </button>
-        <button
-          *ngIf="fromDate || toDate"
-          type="button"
-          class="clear-filter-button"
-          (click)="clearDateFilter()"
-          [disabled]="loading"
-        >
-          Réinitialiser
-        </button>
-      </form>
 
-      <div *ngIf="photos.length > 0" class="selection-toolbar">
-        <span>{{ selectedPhotoIds.size }} photo(s) sélectionnée(s)</span>
-        <button
-          type="button"
-          class="select-all-button"
-          (click)="toggleSelectAll()"
+        <div *ngIf="photos.length > 0" class="selection-toolbar">
+          <button
+            type="button"
+            class="select-all-button"
+            (click)="toggleSelectAll()"
+          >
+            {{ areAllPhotosSelected() ? 'Tout désélectionner' : 'Tout sélectionner' }}
+          </button>
+          <button
+            type="button"
+            class="download-button"
+            [disabled]="selectedPhotoIds.size === 0 || downloading"
+            (click)="openDownloadConfirmation()"
+          >
+            {{ downloading ? 'Téléchargement...' : 'Télécharger la sélection' }}
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="dateFilterOpen" class="modal-overlay" (click)="cancelDateFilter()">
+        <form
+          class="date-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="date-modal-title"
+          (ngSubmit)="applyDateFilter()"
+          (click)="$event.stopPropagation()"
         >
-          {{ areAllPhotosSelected() ? 'Tout désélectionner' : 'Tout sélectionner' }}
-        </button>
-        <button
-          type="button"
-          class="download-button"
-          [disabled]="selectedPhotoIds.size === 0 || downloading"
-          (click)="downloadSelectedPhotos()"
+          <h2 id="date-modal-title">Filtrer par date</h2>
+          <div class="date-fields">
+            <div class="date-field">
+              <label for="from-date">Date de début</label>
+              <input id="from-date" name="fromDate" type="date" [(ngModel)]="pendingFromDate" />
+            </div>
+            <div class="date-field">
+              <label for="to-date">Date de fin</label>
+              <input id="to-date" name="toDate" type="date" [(ngModel)]="pendingToDate" />
+            </div>
+          </div>
+          <div class="date-modal-actions">
+            <button type="button" class="cancel-button" (click)="cancelDateFilter()">
+              Annuler
+            </button>
+            <button type="submit" class="apply-filter-button" [disabled]="loading">
+              Appliquer les filtres
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div *ngIf="downloadConfirmationOpen" class="modal-overlay" (click)="cancelDownload()">
+        <div
+          class="download-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="download-modal-title"
+          (click)="$event.stopPropagation()"
         >
-          {{ downloading ? 'Téléchargement...' : 'Télécharger la sélection' }}
-        </button>
+          <h2 id="download-modal-title">Confirmer le téléchargement</h2>
+          <p>Êtes-vous sûr de vouloir télécharger {{ selectedPhotoIds.size }} photo(s) ?</p>
+          <div class="download-modal-actions">
+            <button type="button" class="cancel-button" (click)="cancelDownload()">
+              Annuler
+            </button>
+            <button type="button" class="confirm-download-button" (click)="confirmDownload()">
+              Télécharger
+            </button>
+          </div>
+        </div>
       </div>
 
       <div *ngIf="loading" class="status-box info">Chargement des photos...</div>
@@ -102,13 +146,9 @@ import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
             </div>
           </div>
           <div class="photo-info">
-            <h3>{{ photo.originalName || photo.fileName }}</h3>
-            <ul>
-              <li><strong>Taille :</strong> {{ photo.size | fileSize }}</li>
-              <li><strong>Type :</strong> {{ photo.mimeType || 'Inconnu' }}</li>
-              <li><strong>Ajoutée le :</strong> {{ photo.uploadDate | dateFormat }}</li>
-              <li><strong>Création :</strong> {{ photo.creationDate | dateOnly }}</li>
-            </ul>
+            <span class="creation-date">
+              <strong>Création :</strong> {{ photo.creationDate | dateFormat }}
+            </span>
           </div>
         </article>
       </div>
@@ -152,16 +192,29 @@ import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
       font-weight: 600;
     }
 
-    .date-filter {
+    .gallery-toolbar {
       display: flex;
-      align-items: end;
-      flex-wrap: wrap;
-      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
       margin-bottom: 20px;
       padding: 16px;
-      background: #fafafa;
-      border: 1px solid #e0e0e0;
+      gap: 16px;
+      background: #f5faff;
+      border: 1px solid #bbdefb;
       border-radius: 10px;
+    }
+
+    .date-filter {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .date-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
     }
 
     .date-field {
@@ -183,7 +236,9 @@ import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
     }
 
     .filter-button,
-    .clear-filter-button {
+    .clear-filter-button,
+    .cancel-button,
+    .apply-filter-button {
       border: none;
       padding: 10px 16px;
       border-radius: 8px;
@@ -207,18 +262,87 @@ import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
       opacity: 0.55;
     }
 
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(15, 23, 42, 0.55);
+    }
+
+    .date-modal {
+      width: min(100%, 480px);
+      padding: 24px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .date-modal h2 {
+      margin: 0 0 20px;
+      color: #263238;
+      font-size: 1.35rem;
+    }
+
+    .date-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .cancel-button {
+      background: #eceff1;
+      color: #455a64;
+    }
+
+    .apply-filter-button {
+      background: #1565c0;
+      color: white;
+    }
+
+    .apply-filter-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .download-modal {
+      width: min(100%, 440px);
+      padding: 24px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .download-modal h2 {
+      margin: 0 0 12px;
+      color: #263238;
+      font-size: 1.35rem;
+    }
+
+    .download-modal p {
+      margin: 0;
+      color: #455a64;
+      line-height: 1.5;
+    }
+
+    .download-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
     .selection-toolbar {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 16px;
-      margin-bottom: 20px;
-      padding: 12px 16px;
-      background: #f5faff;
-      border: 1px solid #bbdefb;
-      border-radius: 10px;
       color: #455a64;
       font-weight: 600;
+      margin-left: auto;
     }
 
     .select-all-button,
@@ -237,6 +361,16 @@ import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
 
     .download-button {
       background: #4caf50;
+    }
+
+    .confirm-download-button {
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      background: #4caf50;
+      color: white;
     }
 
     .download-button:disabled {
@@ -322,17 +456,7 @@ import { FileSizePipe } from '../../shared/pipes/file-size.pipe';
       padding: 16px;
     }
 
-    .photo-info h3 {
-      margin: 0 0 12px;
-      font-size: 1.1rem;
-      word-break: break-word;
-    }
-
-    .photo-info ul {
-      margin: 0;
-      padding-left: 18px;
-      display: grid;
-      gap: 6px;
+    .creation-date {
       color: #455a64;
       font-size: 0.95rem;
     }
@@ -346,6 +470,10 @@ export class PhotoGalleryComponent implements OnInit {
   failedImageIds = new Set<string>();
   fromDate = '';
   toDate = '';
+  pendingFromDate = '';
+  pendingToDate = '';
+  dateFilterOpen = false;
+  downloadConfirmationOpen = false;
   loading = false;
   downloading = false;
   errorMessage = '';
@@ -380,17 +508,47 @@ export class PhotoGalleryComponent implements OnInit {
   }
 
   applyDateFilter(): void {
-    if (this.fromDate && this.toDate && this.fromDate > this.toDate) {
+    if (this.pendingFromDate && this.pendingToDate && this.pendingFromDate > this.pendingToDate) {
       this.errorMessage = 'La date de début doit être antérieure ou égale à la date de fin.';
       return;
     }
 
+    this.fromDate = this.pendingFromDate;
+    this.toDate = this.pendingToDate;
+    this.dateFilterOpen = false;
     this.loadPhotos();
+  }
+
+  openDateFilter(): void {
+    this.pendingFromDate = this.fromDate;
+    this.pendingToDate = this.toDate;
+    this.dateFilterOpen = true;
+  }
+
+  cancelDateFilter(): void {
+    this.dateFilterOpen = false;
+  }
+
+  openDownloadConfirmation(): void {
+    if (this.selectedPhotoIds.size > 0 && !this.downloading) {
+      this.downloadConfirmationOpen = true;
+    }
+  }
+
+  cancelDownload(): void {
+    this.downloadConfirmationOpen = false;
+  }
+
+  confirmDownload(): void {
+    this.downloadConfirmationOpen = false;
+    this.downloadSelectedPhotos();
   }
 
   clearDateFilter(): void {
     this.fromDate = '';
     this.toDate = '';
+    this.pendingFromDate = '';
+    this.pendingToDate = '';
     this.loadPhotos();
   }
 
