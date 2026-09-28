@@ -57,6 +57,44 @@ export class PhotoService {
   }
 
   /**
+   * Upload une photo avec sa date de création.
+   * 
+   * @param file le fichier à uploader
+   * @param creationDate la date de création de la photo
+   * @returns Observable avec la réponse de l'API
+   */
+  uploadPhotoWithDate(file: File, creationDate: Date): Observable<PhotoUploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('creationDate', creationDate.toISOString());
+    
+    return this.http.post<PhotoUploadResponse>(`${this.apiUrl}/upload/single-with-date`, formData).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Upload plusieurs photos avec leurs dates de création.
+   * 
+   * @param files les fichiers à uploader
+   * @param creationDates les dates de création des photos
+   * @returns Observable avec la liste des photos uploadées
+   */
+  uploadPhotosWithDates(files: File[], creationDates: Date[]): Observable<PhotoUploadMultipleResponse> {
+    const formData = new FormData();
+    files.forEach((file, index) => {
+      formData.append('files', file, file.name);
+    });
+    creationDates.forEach((date) => {
+      formData.append('creationDates', date.toISOString());
+    });
+    
+    return this.http.post<PhotoUploadMultipleResponse>(`${this.apiUrl}/upload/multiple-with-date`, formData).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
    * Récupère la liste de toutes les photos.
    * 
    * @returns Observable avec la liste des photos

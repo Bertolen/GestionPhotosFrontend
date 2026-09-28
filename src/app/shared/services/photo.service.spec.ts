@@ -88,4 +88,51 @@ describe('PhotoService', () => {
 
     expect(errorMessage).toBe('Ressource non trouvée.');
   });
+
+  it('téléverse une photo avec sa date de création', () => {
+    const file = new File(['contenu'], 'photo.jpg', { type: 'image/jpeg' });
+    const creationDate = new Date('2026-01-15T10:30:00.000Z');
+    
+    service.uploadPhotoWithDate(file, creationDate).subscribe();
+
+    const request = httpTesting.expectOne(
+      'http://localhost:8080/api/photos/upload/single-with-date'
+    );
+    expect(request.request.method).toBe('POST');
+    
+    // Vérifier que le FormData contient le fichier et la date
+    const formData = request.request.body as FormData;
+    expect(formData.get('file')).toEqual(file);
+    expect(formData.get('creationDate')).toBe('2026-01-15T10:30:00.000Z');
+    
+    request.flush({ photo: {}, message: 'Upload réussi' });
+  });
+
+  it('téléverse plusieurs photos avec leurs dates de création', () => {
+    const file1 = new File(['contenu1'], 'photo1.jpg', { type: 'image/jpeg' });
+    const file2 = new File(['contenu2'], 'photo2.jpg', { type: 'image/jpeg' });
+    const date1 = new Date('2026-01-15T10:30:00.000Z');
+    const date2 = new Date('2026-01-16T11:45:00.000Z');
+    
+    service.uploadPhotosWithDates([file1, file2], [date1, date2]).subscribe();
+
+    const request = httpTesting.expectOne(
+      'http://localhost:8080/api/photos/upload/multiple-with-date'
+    );
+    expect(request.request.method).toBe('POST');
+    
+    // Vérifier que le FormData contient les fichiers et les dates
+    const formData = request.request.body as FormData;
+    const files = formData.getAll('files');
+    expect(files).toHaveSize(2);
+    expect(files[0]).toEqual(file1);
+    expect(files[1]).toEqual(file2);
+    
+    const creationDates = formData.getAll('creationDates');
+    expect(creationDates).toHaveSize(2);
+    expect(creationDates[0]).toBe('2026-01-15T10:30:00.000Z');
+    expect(creationDates[1]).toBe('2026-01-16T11:45:00.000Z');
+    
+    request.flush({ photos: [], message: 'Uploads réussis' });
+  });
 });
