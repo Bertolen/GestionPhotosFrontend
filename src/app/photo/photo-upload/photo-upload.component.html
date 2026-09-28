@@ -1,0 +1,36 @@
+<section class="upload-container">
+  <div class="upload-card">
+    <p class="eyebrow">Téléversement</p>
+    <h1>Uploader des photos</h1>
+
+    <label class="drop-zone" for="photo-input">
+      <input
+        id="photo-input"
+        type="file"
+        accept="image/*"
+        multiple
+        (change)="onFileSelected($event)"
+      />
+      <span>Choisir des images</span>
+    </label>
+
+    <div *ngIf="selectedFiles.length > 0" class="file-list">
+      <h3>Fichiers sélectionnés</h3>
+      <ul>
+        <li *ngFor="let file of selectedFiles">{{ file.name }} ({{ file.size | fileSize }})</li>
+      </ul>
+    </div>
+
+    <button
+      type="button"
+      class="upload-button"
+      [disabled]="selectedFiles.length === 0 || uploading"
+      (click)="uploadFiles()"
+    >
+      {{ uploading ? 'Téléversement...' : 'Téléverser' }}
+    </button>
+
+    <div *ngIf="errorMessage" class="status-box error">{{ errorMessage }}</div>
+    <div *ngIf="successMessage" class="status-box success">{{ successMessage }}</div>
+  </div>
+</section>
