@@ -1,0 +1,34 @@
+# Ignorer les fichiers inutiles pour le build Docker
+
+node_modules/
+.git/
+.gitignore
+.vscode/
+.angular/
+.idea/
+*.md
+*.log
+.DS_Store
+
+# Fichiers générés
+Dist/
+dist/
+
+# Fichiers de configuration locale
+.env
+.env.local
+.env.*.local
+
+# Fichiers de log et cache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Fichiers temporaires
+*.tmp
+*.swp
+
+# Docker files (éviter les conflits)
+Dockerfile
+docker-compose*
+.dockerignore
