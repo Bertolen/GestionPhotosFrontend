@@ -37,12 +37,14 @@ describe('PhotoGalleryComponent', () => {
       'getAllPhotos',
       'getPhotosByDateRange',
       'downloadPhoto',
-      'downloadPhotosBulk'
+      'downloadPhotosBulk',
+      'deletePhotos'
     ]);
     photoService.getAllPhotos.and.returnValue(of(photos));
     photoService.getPhotosByDateRange.and.returnValue(of(photos));
     photoService.downloadPhoto.and.returnValue(of(new Blob(['photo'])));
     photoService.downloadPhotosBulk.and.returnValue(of(new Blob(['zip'])));
+    photoService.deletePhotos.and.returnValue(of({ message: 'Photos supprimees', success: true }));
 
     await TestBed.configureTestingModule({
       imports: [PhotoGalleryComponent],
@@ -54,13 +56,13 @@ describe('PhotoGalleryComponent', () => {
     fixture.detectChanges();
   });
 
-  it('charge les photos à l’initialisation', () => {
+  it('charge les photos a l initialisation', () => {
     expect(photoService.getAllPhotos).toHaveBeenCalled();
     expect(component.photos).toEqual(photos);
     expect(component.loading).toBeFalse();
   });
 
-  it('sélectionne et désélectionne une photo au clic', () => {
+  it('selectionne et deselectionne une photo au clic', () => {
     component.togglePhotoSelection('photo-1');
     expect(component.selectedPhotoIds.has('photo-1')).toBeTrue();
 
@@ -68,7 +70,7 @@ describe('PhotoGalleryComponent', () => {
     expect(component.selectedPhotoIds.has('photo-1')).toBeFalse();
   });
 
-  it('sélectionne toutes les photos affichées puis les désélectionne', () => {
+  it('selectionne toutes les photos affichees puis les deselectionne', () => {
     component.toggleSelectAll();
     expect(component.areAllPhotosSelected()).toBeTrue();
     expect(component.selectedPhotoIds.size).toBe(2);
@@ -77,7 +79,7 @@ describe('PhotoGalleryComponent', () => {
     expect(component.selectedPhotoIds.size).toBe(0);
   });
 
-  it('appelle le filtre avec les bornes de début et de fin', () => {
+  it('appelle le filtre avec les bornes de debut et de fin', () => {
     component.pendingFromDate = '2026-09-01';
     component.pendingToDate = '2026-09-30';
 
@@ -90,17 +92,17 @@ describe('PhotoGalleryComponent', () => {
     expect(component.dateFilterOpen).toBeFalse();
   });
 
-  it('refuse une plage dont la date de début est postérieure à la date de fin', () => {
+  it('refuse une plage dont la date de debut est posterieure a la date de fin', () => {
     component.pendingFromDate = '2026-09-30';
     component.pendingToDate = '2026-09-01';
 
     component.applyDateFilter();
 
     expect(photoService.getPhotosByDateRange).not.toHaveBeenCalled();
-    expect(component.errorMessage).toContain('antérieure ou égale');
+    expect(component.errorMessage).toContain('anterieure ou egale');
   });
 
-  it('ouvre la confirmation et utilise le ZIP par défaut pour plusieurs photos', () => {
+  it('ouvre la confirmation et utilise le ZIP par defaut pour plusieurs photos', () => {
     component.selectedPhotoIds = new Set(['photo-1', 'photo-2']);
 
     component.openDownloadConfirmation();
@@ -113,7 +115,7 @@ describe('PhotoGalleryComponent', () => {
     expect(photoService.downloadPhoto).not.toHaveBeenCalled();
   });
 
-  it('télécharge individuellement lorsque l’option est cochée', () => {
+  it('telecharge individuellement lorsque l option est cochee', () => {
     component.selectedPhotoIds = new Set(['photo-1', 'photo-2']);
     component.downloadIndividually = true;
 
@@ -125,7 +127,7 @@ describe('PhotoGalleryComponent', () => {
     expect(photoService.downloadPhotosBulk).not.toHaveBeenCalled();
   });
 
-  it('affiche une erreur lorsque le chargement échoue', () => {
+  it('affiche une erreur lorsque le chargement echoue', () => {
     photoService.getAllPhotos.and.returnValue(
       throwError(() => new Error('Erreur de test'))
     );
@@ -134,5 +136,45 @@ describe('PhotoGalleryComponent', () => {
 
     expect(component.loading).toBeFalse();
     expect(component.errorMessage).toBe('Erreur de test');
+  });
+
+  it('ouvre la modale de confirmation de suppression', () => {
+    component.selectedPhotoIds = new Set(['photo-1', 'photo-2']);
+    component.openDeleteConfirmation();
+    expect(component.deleteConfirmationOpen).toBeTrue();
+  });
+
+  it('ne pas ouvrir la modale de suppression si aucune photo nest selectionnee', () => {
+    component.selectedPhotoIds = new Set();
+    component.openDeleteConfirmation();
+    expect(component.deleteConfirmationOpen).toBeFalse();
+  });
+
+  it('annule la suppression', () => {
+    component.deleteConfirmationOpen = true;
+    component.cancelDelete();
+    expect(component.deleteConfirmationOpen).toBeFalse();
+  });
+
+  it('supprime les photos selectionnees et recharge la galerie', () => {
+    component.selectedPhotoIds = new Set(['photo-1', 'photo-2']);
+    component.confirmDelete();
+
+    expect(photoService.deletePhotos).toHaveBeenCalledWith(['photo-1', 'photo-2']);
+    expect(component.deleting).toBeFalse();
+    expect(component.selectedPhotoIds.size).toBe(0);
+    expect(component.photos).toEqual(photos);
+  });
+
+  it('affiche une erreur lorsque la suppression echoue', () => {
+    photoService.deletePhotos.and.returnValue(
+      throwError(() => new Error('Erreur de suppression'))
+    );
+
+    component.selectedPhotoIds = new Set(['photo-1']);
+    component.confirmDelete();
+
+    expect(component.deleting).toBeFalse();
+    expect(component.errorMessage).toBe('Erreur de suppression');
   });
 });

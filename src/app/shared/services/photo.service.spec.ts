@@ -26,7 +26,7 @@ describe('PhotoService', () => {
     httpTesting.verify();
   });
 
-  it('récupère toutes les photos', () => {
+  it('recuperes toutes les photos', () => {
     service.getAllPhotos().subscribe();
 
     const request = httpTesting.expectOne('http://localhost:8080/api/photos');
@@ -34,7 +34,7 @@ describe('PhotoService', () => {
     request.flush([]);
   });
 
-  it('récupère les photos dans une plage de dates', () => {
+  it('recuperes les photos dans une plage de dates', () => {
     service.getPhotosByDateRange(
       '2026-09-01T00:00:00',
       '2026-09-30T23:59:59'
@@ -49,7 +49,7 @@ describe('PhotoService', () => {
     request.flush([]);
   });
 
-  it('télécharge une photo', () => {
+  it('telecharge une photo', () => {
     service.downloadPhoto('photo-1').subscribe();
 
     const request = httpTesting.expectOne(
@@ -60,7 +60,7 @@ describe('PhotoService', () => {
     request.flush(new Blob(['photo']));
   });
 
-  it('télécharge plusieurs photos dans un ZIP', () => {
+  it('telecharge plusieurs photos dans un ZIP', () => {
     service.downloadPhotosBulk(['photo-1', 'photo-2']).subscribe();
 
     const request = httpTesting.expectOne((req) =>
@@ -75,7 +75,7 @@ describe('PhotoService', () => {
     request.flush(new Blob(['zip']));
   });
 
-  it('traduit une erreur HTTP 404 en erreur métier', () => {
+  it('traduit une erreur HTTP 404 en erreur metier', () => {
     let errorMessage = '';
     service.getPhotoById('missing').subscribe({
       error: (error: Error) => errorMessage = error.message
@@ -86,10 +86,20 @@ describe('PhotoService', () => {
     );
     request.flush({}, { status: 404, statusText: 'Not Found' });
 
-    expect(errorMessage).toBe('Ressource non trouvée.');
+    expect(errorMessage).toBe('Ressource non trouvee.');
   });
 
-  it('téléverse une photo avec sa date de création', () => {
+  it('supprime plusieurs photos', () => {
+    service.deletePhotos(['photo-1', 'photo-2']).subscribe();
+
+    const request = httpTesting.expectOne((req) =>
+      req.url === 'http://localhost:8080/api/photos/multiple' && req.request.method === 'DELETE'
+    );
+    expect(request.request.params.getAll('photoIds')).toEqual(['photo-1', 'photo-2']);
+    request.flush({ message: 'Photos supprimees', success: true });
+  });
+
+  it('televerse une photo avec sa date de creation', () => {
     const file = new File(['contenu'], 'photo.jpg', { type: 'image/jpeg' });
     const creationDate = new Date('2026-01-15T10:30:00.000Z');
     
@@ -100,15 +110,14 @@ describe('PhotoService', () => {
     );
     expect(request.request.method).toBe('POST');
     
-    // Vérifier que le FormData contient le fichier et la date
     const formData = request.request.body as FormData;
     expect(formData.get('file')).toEqual(file);
     expect(formData.get('creationDate')).toBe('2026-01-15T10:30:00.000Z');
     
-    request.flush({ photo: {}, message: 'Upload réussi' });
+    request.flush({ photo: {}, message: 'Upload reussi' });
   });
 
-  it('téléverse plusieurs photos avec leurs dates de création', () => {
+  it('televerse plusieurs photos avec leurs dates de creation', () => {
     const file1 = new File(['contenu1'], 'photo1.jpg', { type: 'image/jpeg' });
     const file2 = new File(['contenu2'], 'photo2.jpg', { type: 'image/jpeg' });
     const date1 = new Date('2026-01-15T10:30:00.000Z');
@@ -121,7 +130,6 @@ describe('PhotoService', () => {
     );
     expect(request.request.method).toBe('POST');
     
-    // Vérifier que le FormData contient les fichiers et les dates
     const formData = request.request.body as FormData;
     const files = formData.getAll('files');
     expect(files).toHaveSize(2);
@@ -133,6 +141,6 @@ describe('PhotoService', () => {
     expect(creationDates[0]).toBe('2026-01-15T10:30:00.000Z');
     expect(creationDates[1]).toBe('2026-01-16T11:45:00.000Z');
     
-    request.flush({ photos: [], message: 'Uploads réussis' });
+    request.flush({ photos: [], message: 'Uploads reussis' });
   });
 });

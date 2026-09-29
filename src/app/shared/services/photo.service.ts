@@ -164,6 +164,23 @@ export class PhotoService {
   }
 
   /**
+   * Supprime plusieurs photos.
+   * 
+   * @param photoIds les identifiants des photos à supprimer
+   * @returns Observable avec un message de confirmation
+   */
+  deletePhotos(photoIds: string[]): Observable<Map<string, object>> {
+    let params = new HttpParams();
+    photoIds.forEach((id) => {
+      params = params.append('photoIds', id);
+    });
+
+    return this.http.delete<Map<string, object>>(`${this.apiUrl}/multiple`, { params }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
    * Récupère les métadonnées d'une photo.
    * 
    * @param id l'ID de la photo

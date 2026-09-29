@@ -166,10 +166,32 @@ h1 {
   font-size: 1.35rem;
 }
 
-.download-modal p {
+.download-modal p,
+.delete-modal p {
   margin: 0;
   color: #455a64;
   line-height: 1.5;
+}
+
+.delete-modal {
+  width: min(100%, 440px);
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.delete-modal h2 {
+  margin: 0 0 12px;
+  color: #263238;
+  font-size: 1.35rem;
+}
+
+.delete-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
 }
 
 .individual-download-option {
@@ -205,7 +227,8 @@ h1 {
 }
 
 .select-all-button,
-.download-button {
+.download-button,
+.delete-button {
   border: none;
   color: white;
   padding: 10px 16px;
@@ -222,7 +245,12 @@ h1 {
   background: #4caf50;
 }
 
-.confirm-download-button {
+.delete-button {
+  background: #f44336;
+}
+
+.confirm-download-button,
+.confirm-delete-button {
   border: none;
   padding: 10px 16px;
   border-radius: 8px;
@@ -232,7 +260,12 @@ h1 {
   color: white;
 }
 
-.download-button:disabled {
+.confirm-delete-button {
+  background: #f44336;
+}
+
+.download-button:disabled,
+.delete-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -343,7 +376,8 @@ h1 {
   .filter-button,
   .clear-filter-button,
   .select-all-button,
-  .download-button {
+  .download-button,
+  .delete-button {
     padding: 8px 10px;
     font-size: 0.85rem;
   }
@@ -397,18 +431,21 @@ h1 {
   }
 
   .date-modal,
-  .download-modal {
+  .download-modal,
+  .delete-modal {
     padding: 18px;
   }
 
   .date-modal-actions,
-  .download-modal-actions {
+  .download-modal-actions,
+  .delete-modal-actions {
     gap: 8px;
     margin-top: 18px;
   }
 
   .date-modal-actions button,
-  .download-modal-actions button {
+  .download-modal-actions button,
+  .delete-modal-actions button {
     flex: 1;
     padding: 9px 10px;
     font-size: 0.85rem;

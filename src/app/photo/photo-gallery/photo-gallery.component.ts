@@ -25,9 +25,11 @@ export class PhotoGalleryComponent implements OnInit {
   pendingToDate = '';
   dateFilterOpen = false;
   downloadConfirmationOpen = false;
+  deleteConfirmationOpen = false;
   downloadIndividually = false;
   loading = false;
   downloading = false;
+  deleting = false;
   errorMessage = '';
 
   ngOnInit(): void {
@@ -108,6 +110,21 @@ export class PhotoGalleryComponent implements OnInit {
     this.pendingFromDate = '';
     this.pendingToDate = '';
     this.loadPhotos();
+  }
+
+  openDeleteConfirmation(): void {
+    if (this.selectedPhotoIds.size > 0 && !this.deleting) {
+      this.deleteConfirmationOpen = true;
+    }
+  }
+
+  cancelDelete(): void {
+    this.deleteConfirmationOpen = false;
+  }
+
+  confirmDelete(): void {
+    this.deleteConfirmationOpen = false;
+    this.deleteSelectedPhotos();
   }
 
   getPhotoUrl(photoId: string): string {
@@ -192,6 +209,29 @@ export class PhotoGalleryComponent implements OnInit {
       error: (err: Error) => {
         this.downloading = false;
         this.errorMessage = err.message || 'Impossible de télécharger la sélection.';
+      }
+    });
+  }
+
+  private deleteSelectedPhotos(): void {
+    const selectedPhotoIds = Array.from(this.selectedPhotoIds);
+
+    if (selectedPhotoIds.length === 0 || this.deleting) {
+      return;
+    }
+
+    this.deleting = true;
+    this.errorMessage = '';
+
+    this.photoService.deletePhotos(selectedPhotoIds).subscribe({
+      next: () => {
+        this.deleting = false;
+        this.loadPhotos();
+        this.selectedPhotoIds.clear();
+      },
+      error: (err: Error) => {
+        this.deleting = false;
+        this.errorMessage = err.message || 'Impossible de supprimer la sélection.';
       }
     });
   }
