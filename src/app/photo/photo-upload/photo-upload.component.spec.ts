@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { PhotoUploadComponent } from './photo-upload.component';
 import { PhotoService } from '../../shared/services/photo.service';
+import { Photo } from '../../shared/models/photo.model';
 
 describe('PhotoUploadComponent', () => {
   let fixture: ComponentFixture<PhotoUploadComponent>;
@@ -15,8 +16,10 @@ describe('PhotoUploadComponent', () => {
       'uploadPhotosWithDates'
     ]);
     photoService.uploadPhotos.and.returnValue(of([]));
-    photoService.uploadPhotoWithDate.and.returnValue(of({}));
-    photoService.uploadPhotosWithDates.and.returnValue(of({}));
+    photoService.uploadPhotoWithDate.and.returnValue(of({ photo: {
+      id: '', originalName: '', storedPath: '', fileName: '', size: 0, mimeType: '', uploadDate: new Date(), creationDate: new Date()
+    } as Photo }));
+    photoService.uploadPhotosWithDates.and.returnValue(of({ photos: [] }));
 
     await TestBed.configureTestingModule({
       imports: [PhotoUploadComponent],
