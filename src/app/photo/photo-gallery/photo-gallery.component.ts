@@ -170,9 +170,7 @@ export class PhotoGalleryComponent implements OnInit {
   }
 
   private downloadSelectedPhotosAsZip(): void {
-    const selectedPhotoIds = this.photos
-      .filter((photo) => this.selectedPhotoIds.has(photo.id))
-      .map((photo) => photo.id);
+    const selectedPhotoIds = Array.from(this.selectedPhotoIds);
 
     if (selectedPhotoIds.length < 2 || this.downloading) {
       return;

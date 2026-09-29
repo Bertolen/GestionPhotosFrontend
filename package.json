@@ -12,7 +12,7 @@
     "docker:build:local": "docker build -t gestion-photos-frontend:local .",
     "docker:run:local": "docker run -p 8080:80 gestion-photos-frontend:local",
     "docker:deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
-    "docker:deploy:win": "powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1"
+    "docker:deploy:win": "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1"
   },
   "private": true,
   "dependencies": {
