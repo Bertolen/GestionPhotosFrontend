@@ -9,8 +9,8 @@ WORKDIR /app
 # Copie des fichiers de dépendances
 COPY package.json package-lock.json ./
 
-# Installation des dépendances (clean cache pour réduire la taille)
-RUN npm ci --only=production
+# Le build Angular nécessite aussi les dépendances de développement (CLI et builder)
+RUN npm ci
 
 # Copie des fichiers source
 COPY . .
