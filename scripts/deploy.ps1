@@ -13,7 +13,8 @@ param (
     [string]$RaspberryIp = "192.168.1.100",
     [string]$RaspberryUser = "pi",
     [int]$RaspberrySshPort = 22,
-    [int]$RaspberryDockerPort = 8080
+    [int]$RaspberryDockerPort = 8080,
+    [string]$ApiBaseUrl = "http://localhost:8080"
 )
 
 Write-Host "=== Déploiement de GestionPhotos Frontend sur Raspberry Pi 4 ===" -ForegroundColor Cyan
@@ -37,6 +38,7 @@ if (Test-Path ".env") {
     if ($envVars.ContainsKey("RASPBERRY_USER")) { $RaspberryUser = $envVars["RASPBERRY_USER"] }
     if ($envVars.ContainsKey("RASPBERRY_SSH_PORT")) { $RaspberrySshPort = [int]$envVars["RASPBERRY_SSH_PORT"] }
     if ($envVars.ContainsKey("RASPBERRY_DOCKER_PORT")) { $RaspberryDockerPort = [int]$envVars["RASPBERRY_DOCKER_PORT"] }
+    if ($envVars.ContainsKey("API_BASE_URL")) { $ApiBaseUrl = $envVars["API_BASE_URL"] }
 }
 
 $FullImageName = "$ImageName`:$ImageTag"
@@ -88,7 +90,7 @@ try {
 } catch {
     Write-Host "ERREUR: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Vous pouvez copier manuellement le fichier $TarFile vers /tmp/ sur la Raspberry" -ForegroundColor Yellow
-    Write-Host "Puis exécuter: ssh $RaspberryUser@$RaspberryIp `"docker load < /tmp/$TarFile && docker run -d -p $RaspberryDockerPort:80 --name $ImageName $FullImageName`"" -ForegroundColor Yellow
+    Write-Host "Puis exécuter: ssh $RaspberryUser@$RaspberryIp `"docker load < /tmp/$TarFile && docker run -d -p $RaspberryDockerPort:80 -e API_BASE_URL=$ApiBaseUrl --name $ImageName $FullImageName`"" -ForegroundColor Yellow
     exit 1
 }
 
@@ -107,6 +109,7 @@ try {
     docker run -d `
         --name $ImageName `
         -p $RaspberryDockerPort:80 `
+        -e API_BASE_URL='$ApiBaseUrl' `
         --restart unless-stopped `
         $FullImageName
     
@@ -134,7 +137,7 @@ try {
     Write-Host "Exécutez manuellement sur la Raspberry:" -ForegroundColor Yellow
     Write-Host "  docker load < /tmp/$TarFile" -ForegroundColor Yellow
     Write-Host "  docker stop $ImageName 2>/dev/null || true && docker rm $ImageName 2>/dev/null || true" -ForegroundColor Yellow
-    Write-Host "  docker run -d --name $ImageName -p $RaspberryDockerPort:80 --restart unless-stopped $FullImageName" -ForegroundColor Yellow
+    Write-Host "  docker run -d --name $ImageName -p $RaspberryDockerPort:80 -e API_BASE_URL=$ApiBaseUrl --restart unless-stopped $FullImageName" -ForegroundColor Yellow
     exit 1
 }
 

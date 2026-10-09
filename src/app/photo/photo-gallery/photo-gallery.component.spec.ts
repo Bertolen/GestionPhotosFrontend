@@ -36,15 +36,19 @@ describe('PhotoGalleryComponent', () => {
     photoService = jasmine.createSpyObj<PhotoService>('PhotoService', [
       'getAllPhotos',
       'getPhotosByDateRange',
+      'getPhotoUrl',
       'downloadPhoto',
       'downloadPhotosBulk',
       'deletePhotos'
     ]);
     photoService.getAllPhotos.and.returnValue(of(photos));
     photoService.getPhotosByDateRange.and.returnValue(of(photos));
+    photoService.getPhotoUrl.and.returnValue(
+      'http://localhost:8080/api/photos/photo-1/download'
+    );
     photoService.downloadPhoto.and.returnValue(of(new Blob(['photo'])));
     photoService.downloadPhotosBulk.and.returnValue(of(new Blob(['zip'])));
-    photoService.deletePhotos.and.returnValue(of({ message: 'Photos supprimees', success: true }));
+    photoService.deletePhotos.and.returnValue(of(new Map<string, object>()));
 
     await TestBed.configureTestingModule({
       imports: [PhotoGalleryComponent],
@@ -60,6 +64,13 @@ describe('PhotoGalleryComponent', () => {
     expect(photoService.getAllPhotos).toHaveBeenCalled();
     expect(component.photos).toEqual(photos);
     expect(component.loading).toBeFalse();
+  });
+
+  it('utilise PhotoService pour construire l URL de la photo', () => {
+    expect(component.getPhotoUrl('photo-1')).toBe(
+      'http://localhost:8080/api/photos/photo-1/download'
+    );
+    expect(photoService.getPhotoUrl).toHaveBeenCalledWith('photo-1');
   });
 
   it('selectionne et deselectionne une photo au clic', () => {
@@ -99,7 +110,7 @@ describe('PhotoGalleryComponent', () => {
     component.applyDateFilter();
 
     expect(photoService.getPhotosByDateRange).not.toHaveBeenCalled();
-    expect(component.errorMessage).toContain('anterieure ou egale');
+    expect(component.errorMessage).toContain('antérieure ou égale');
   });
 
   it('ouvre la confirmation et utilise le ZIP par defaut pour plusieurs photos', () => {

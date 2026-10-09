@@ -23,12 +23,14 @@ FROM nginx:alpine
 
 # Copie de la configuration Nginx personnalisée
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Suppression du contenu par défaut de Nginx
-RUN rm -rf /usr/share/nginx/html/*
+COPY docker/runtime-config.js.template /etc/nginx/templates/runtime-config.js.template
 
 # Angular application builder places browser assets in a nested browser directory
 COPY --from=builder /app/dist/gestion-photos-frontend/browser /usr/share/nginx/html
+
+# API URL injected into the frontend configuration when the container starts
+ENV API_BASE_URL=http://localhost:8080
+ENV NGINX_ENVSUBST_OUTPUT_DIR=/usr/share/nginx/html
 
 # Exposition du port 80
 EXPOSE 80

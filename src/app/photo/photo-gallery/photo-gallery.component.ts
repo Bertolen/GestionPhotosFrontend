@@ -128,7 +128,7 @@ export class PhotoGalleryComponent implements OnInit {
   }
 
   getPhotoUrl(photoId: string): string {
-    return `http://localhost:8080/api/photos/${encodeURIComponent(photoId)}/download`;
+    return this.photoService.getPhotoUrl(photoId);
   }
 
   onImageError(photoId: string): void {

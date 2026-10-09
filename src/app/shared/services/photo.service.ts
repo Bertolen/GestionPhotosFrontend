@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Observable, catchError, throwError } from 'rxjs';
 import { Photo, PhotoUploadResponse, PhotoUploadMultipleResponse } from '../models/photo.model';
+import { getPhotoApiUrl } from '../config/runtime-config';
 
 /**
  * Service Angular pour communiquer avec l'API Spring Boot.
@@ -14,8 +15,7 @@ export class PhotoService {
   
   private readonly http = inject(HttpClient);
   
-  // URL de base de l'API Spring Boot
-  private readonly apiUrl = 'http://localhost:8080/api/photos';
+  private readonly apiUrl = getPhotoApiUrl();
   
   // Headers pour les requêtes
   private readonly httpOptions = {
@@ -115,6 +115,10 @@ export class PhotoService {
     return this.http.get<Photo>(`${this.apiUrl}/${id}`).pipe(
       catchError(this.handleError)
     );
+  }
+
+  getPhotoUrl(id: string): string {
+    return `${this.apiUrl}/${encodeURIComponent(id)}/download`;
   }
 
   /**

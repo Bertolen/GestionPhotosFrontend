@@ -60,6 +60,12 @@ describe('PhotoService', () => {
     request.flush(new Blob(['photo']));
   });
 
+  it('genere une URL de telechargement avec un identifiant encode', () => {
+    expect(service.getPhotoUrl('photo / 1')).toBe(
+      'http://localhost:8080/api/photos/photo%20%2F%201/download'
+    );
+  });
+
   it('telecharge plusieurs photos dans un ZIP', () => {
     service.downloadPhotosBulk(['photo-1', 'photo-2']).subscribe();
 
@@ -86,14 +92,14 @@ describe('PhotoService', () => {
     );
     request.flush({}, { status: 404, statusText: 'Not Found' });
 
-    expect(errorMessage).toBe('Ressource non trouvee.');
+    expect(errorMessage).toBe('Ressource non trouvée.');
   });
 
   it('supprime plusieurs photos', () => {
     service.deletePhotos(['photo-1', 'photo-2']).subscribe();
 
     const request = httpTesting.expectOne((req) =>
-      req.url === 'http://localhost:8080/api/photos/multiple' && req.request.method === 'DELETE'
+      req.url === 'http://localhost:8080/api/photos/multiple' && req.method === 'DELETE'
     );
     expect(request.request.params.getAll('photoIds')).toEqual(['photo-1', 'photo-2']);
     request.flush({ message: 'Photos supprimees', success: true });

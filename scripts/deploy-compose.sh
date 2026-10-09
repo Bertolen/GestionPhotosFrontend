@@ -53,7 +53,7 @@ ssh -p "$RASPBERRY_SSH_PORT" "${RASPBERRY_USER}@${RASPBERRY_IP}" << EOF
     docker compose down 2>/dev/null || true
     
     echo "Démarrage avec Docker Compose..."
-    docker compose -f docker-compose.yml up -d
+    API_BASE_URL="${API_BASE_URL:-http://localhost:8080}" docker compose -f docker-compose.yml up -d
     
     echo "Nettoyage..."
     rm /tmp/${IMAGE_NAME}-${IMAGE_TAG}.tar

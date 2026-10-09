@@ -52,6 +52,7 @@ RASPBERRY_IP=192.168.1.100
 RASPBERRY_USER=pi
 RASPBERRY_SSH_PORT=22
 RASPBERRY_DOCKER_PORT=8080
+API_BASE_URL=http://192.168.1.100:8081
 ```
 
 > **Note** : Si vous utilisez Docker Compose, le port sera celui défini dans `docker-compose.yml`.
@@ -141,6 +142,7 @@ docker load < /tmp/gestion-photos-frontend.tar
 docker run -d \
   --name gestion-photos-frontend \
   -p 8080:80 \
+  -e API_BASE_URL=http://192.168.1.100:8081 \
   --restart unless-stopped \
   gestion-photos-frontend:latest
 
@@ -150,11 +152,20 @@ rm /tmp/gestion-photos-frontend.tar
 
 ---
 
+`API_BASE_URL` est l'URL de base de l'API Spring Boot, accessible depuis le navigateur des utilisateurs
+(schéma et port inclus, sans `/api/photos`). Par exemple, remplacez `192.168.1.100:8081` par l'adresse
+et le port réellement exposés par votre backend. La valeur par défaut est `http://localhost:8080`.
+Cette configuration est appliquée au démarrage du conteneur : il n'est pas nécessaire de reconstruire
+l'image pour changer l'URL.
+
 ### 5. Docker Compose (optionnel)
 
 Pour utiliser Docker Compose sur la Raspberry :
 
 ```bash
+# Configurer l'URL de l'API pour les navigateurs clients
+export API_BASE_URL=http://192.168.1.100:8081
+
 # Copier les fichiers nécessaires
 scp docker-compose.yml nginx.conf pi@192.168.1.100:~/
 
