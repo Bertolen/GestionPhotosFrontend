@@ -2,7 +2,7 @@
 # Utilisation: docker build -t gestion-photos-frontend --platform linux/arm64 .
 
 # --- Stage 1: Build Angular App ---
-FROM node:20-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -27,8 +27,8 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Suppression du contenu par défaut de Nginx
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copie des fichiers build depuis le stage builder
-COPY --from=builder /app/dist/gestion-photos-frontend /usr/share/nginx/html
+# Angular application builder places browser assets in a nested browser directory
+COPY --from=builder /app/dist/gestion-photos-frontend/browser /usr/share/nginx/html
 
 # Exposition du port 80
 EXPOSE 80
