@@ -98,7 +98,7 @@ if command -v gitlab-runner >/dev/null 2>&1; then
     ok "gitlab-runner est déjà installé : $(gitlab-runner --version 2>/dev/null | head -n1)"
 else
     info "Ajout du dépôt officiel gitlab-runner..."
-    curl -L "https://packages.gitlab.com/install/repositories/gitlab/gitlab-runner/script.deb.sh" | $SUDO bash \
+    curl -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" | $SUDO bash \
         || fail "Impossible d'ajouter le dépôt gitlab-runner. Vérifiez la connexion internet."
     $SUDO apt-get install -y gitlab-runner \
         || fail "Échec de l'installation du paquet gitlab-runner."
