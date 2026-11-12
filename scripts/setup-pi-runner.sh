@@ -162,17 +162,23 @@ ok "Le runner traitera un job à la fois."
 
 info "Étape 7/8 : accès Docker et fichier .env..."
 
-RUNNER_USER="$($SUDO systemctl show gitlab-runner -p User --value)"
-if [ -z "$RUNNER_USER" ] || [ "$RUNNER_USER" = "root" ]; then
-    info "Le service gitlab-runner tourne en root : accès Docker direct, aucun groupe à ajouter."
-else
-    if ! $SUDO id -nG "$RUNNER_USER" | grep -qw docker; then
-        $SUDO usermod -aG docker "$RUNNER_USER"
-        $SUDO systemctl restart gitlab-runner
-        ok "Utilisateur « $RUNNER_USER » ajouté au groupe docker."
+# Les scripts des jobs (shell executor) tournent sous le compte « gitlab-runner »
+# créé par le paquet, même quand le service tourne en root : c'est ce compte qui
+# doit accéder au socket Docker, pas l'utilisateur du service.
+JOB_USER="gitlab-runner"
+if $SUDO id "$JOB_USER" >/dev/null 2>&1; then
+    if ! $SUDO id -nG "$JOB_USER" | grep -qw docker; then
+        $SUDO usermod -aG docker "$JOB_USER"
+        ok "Utilisateur « $JOB_USER » ajouté au groupe docker."
     else
-        ok "L'utilisateur « $RUNNER_USER » est déjà dans le groupe docker."
+        ok "L'utilisateur « $JOB_USER » est déjà dans le groupe docker."
     fi
+    # Un usermod ne s'applique qu'aux process démarrés après : on redémarre le
+    # service pour que le process qui lance les jobs prenne les nouveaux groupes.
+    $SUDO systemctl restart gitlab-runner
+    ok "Service gitlab-runner redémarré."
+else
+    warn "Compte « $JOB_USER » introuvable : vérifiez manuellement que l'utilisateur des jobs appartient au groupe docker."
 fi
 
 echo
