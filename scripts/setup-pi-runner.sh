@@ -3,7 +3,7 @@
 # Wizard d'installation du runner CI GestionPhotos sur la Raspberry Pi.
 #
 # À exécuter SUR LA PI, en SSH, par le propriétaire (issue #1) :
-#   ssh pi@nuesta-traviesa
+#   ssh pi@nuestra-traviesa
 #   git clone https://gitlab.com/nuestra-traviesa/GestionPhotosFrontend.git
 #   cd GestionPhotosFrontend && sudo bash scripts/setup-pi-runner.sh
 #
