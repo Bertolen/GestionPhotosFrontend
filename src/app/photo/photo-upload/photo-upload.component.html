@@ -4,13 +4,7 @@
     <h1>Uploader des photos</h1>
 
     <label class="drop-zone" for="photo-input">
-      <input
-        id="photo-input"
-        type="file"
-        accept="image/*"
-        multiple
-        (change)="onFileSelected($event)"
-      />
+      <input id="photo-input" type="file" multiple (change)="onFileSelected($event)" />
       <span>Choisir des images</span>
     </label>
 
@@ -21,12 +15,8 @@
       </ul>
     </div>
 
-    <button
-      type="button"
-      class="upload-button"
-      [disabled]="selectedFiles.length === 0 || uploading"
-      (click)="uploadFiles()"
-    >
+    <button type="button" class="upload-button" [disabled]="selectedFiles.length === 0 || uploading"
+      (click)="uploadFiles()">
       {{ uploading ? 'Téléversement...' : 'Téléverser' }}
     </button>
 
