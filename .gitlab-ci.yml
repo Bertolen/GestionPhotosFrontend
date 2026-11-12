@@ -80,7 +80,10 @@ docker-build:
     # Émulation QEMU pour la plateforme ARM64 (le stage builder du Dockerfile
     # reste natif grâce à --platform=$BUILDPLATFORM, seul le stage final est arm64).
     - docker run --privileged --rm tonistiigi/binfmt --install arm64
-    - docker buildx create --use --name builder
+    # buildx ne sait pas charger la conf TLS du service dind depuis l'environnement :
+    # on matérialise un contexte docker dédié, puis on crée le builder dessus.
+    - docker context create gitlab-dind --docker "host=$DOCKER_HOST,ca=$DOCKER_TLS_CA_CERT,cert=$DOCKER_TLS_CERT,key=$DOCKER_TLS_KEY"
+    - docker buildx create --use --name builder gitlab-dind
     # Sur master uniquement : publication de l'image (SHA court + latest) dans le registry.
     # Sur MR : build de validation, sans publication.
     - |
