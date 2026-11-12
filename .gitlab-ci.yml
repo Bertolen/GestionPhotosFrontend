@@ -1,0 +1,160 @@
+# Pipeline CI/CD GestionPhotos Frontend — spec : issue #1
+#
+# - Merge request : install + build + tests + build de l'image ARM64 (validation, sans publication).
+# - Push/merge sur master : idem + publication dans le Container Registry + déploiement
+#   automatique sur la Raspberry Pi (runner auto-hébergé taggé « rpi ») + smoke test.
+# - Pas de pipeline pour les autres pushes de branche (pas de doublon branche + MR).
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+
+stages:
+  - install
+  - verify
+  - deploy
+
+default:
+  interruptible: true
+
+# --- Étape 1 : dépendances (cache npm partagé entre les pipelines) ---
+
+install:
+  stage: install
+  image: node:20
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+      - node_modules/
+  script:
+    - npm ci --cache .npm --no-audit --no-fund
+
+# --- Étape 2 : vérifications ---
+
+build:
+  stage: verify
+  image: node:20
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+      - node_modules/
+    policy: pull
+  script:
+    - if [ ! -d node_modules ]; then npm ci --cache .npm --no-audit --no-fund; fi
+    - npm run build -- --configuration production
+
+test:
+  stage: verify
+  image: node:20
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq chromium
+  variables:
+    CHROME_BIN: /usr/bin/chromium
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+      - node_modules/
+    policy: pull
+  script:
+    - if [ ! -d node_modules ]; then npm ci --cache .npm --no-audit --no-fund; fi
+    - npm run test -- --watch=false --browsers=ChromeHeadlessNoSandbox
+
+docker-build:
+  stage: verify
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    # TLS dind désactivé (config standard GitLab) : le daemon n'est joignable que
+    # dans le réseau privé éphémère du job, et buildx s'en trouve simplifié.
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    # Émulation QEMU pour la plateforme ARM64 (le stage builder du Dockerfile
+    # reste natif grâce à --platform=$BUILDPLATFORM, seul le stage final est arm64).
+    - docker run --privileged --rm tonistiigi/binfmt --install arm64
+    - docker buildx create --use --name builder
+    # Sur master uniquement : publication de l'image (SHA court + latest) dans le registry.
+    # Sur MR : build de validation, sans publication.
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "master" ]; then
+        docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+        docker buildx build --platform linux/arm64 \
+          -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA" \
+          -t "$CI_REGISTRY_IMAGE:latest" \
+          --push .
+      else
+        docker buildx build --platform linux/arm64 \
+          -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA" \
+          -t "$CI_REGISTRY_IMAGE:latest" \
+          .
+      fi
+
+# --- Étape 3 : déploiement sur la Raspberry Pi (master uniquement) ---
+
+deploy:
+  stage: deploy
+  tags:
+    - rpi
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+  environment:
+    name: production
+    url: http://nuestra-traviesa/
+  resource_group: production
+  variables:
+    # Image publiée par le job docker-build de cette même pipeline.
+    # Le rollback GitLab relance ce job avec le SHA du commit précédent.
+    FRONTEND_IMAGE: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+  script:
+    - |
+      set -e
+      ENV_FILE="${PI_ENV_FILE:-/home/pi/gestion-photos/.env}"
+      if [ ! -f "$ENV_FILE" ]; then
+        echo "ERREUR: $ENV_FILE introuvable."
+        echo "Lancez le wizard d'installation sur la Pi : scripts/setup-pi-runner.sh"
+        exit 1
+      fi
+      docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+      docker compose --env-file "$ENV_FILE" pull frontend
+      # Si un conteneur démarré manuellement (hors compose) porte déjà le nom,
+      # on le retire : compose doit gérer ce nom (ex: conteneur de secours deploy.sh).
+      if docker inspect gestion-photos-frontend >/dev/null 2>&1; then
+        if [ -z "$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' gestion-photos-frontend 2>/dev/null)" ]; then
+          echo "Conteneur manuel existant détecté, remplacement par le conteneur compose..."
+          docker rm -f gestion-photos-frontend
+        fi
+      fi
+      docker compose --env-file "$ENV_FILE" up -d --remove-orphans
+      echo "Image déployée : $FRONTEND_IMAGE"
+    # Smoke test : le port 80 doit servir l'index Angular, pas le JSON d'erreur Spring Boot.
+    - |
+      set -e
+      ok=""
+      for i in 1 2 3 4 5; do
+        if curl -fsS --max-time 10 http://localhost/ -o /tmp/smoke.html 2>/dev/null; then ok=1; break; fi
+        echo "Attente du frontend (essai $i/5)..."
+        sleep 3
+      done
+      if [ -z "$ok" ]; then
+        echo "ERREUR: smoke test - pas de reponse HTTP sur localhost:80"
+        exit 1
+      fi
+      if ! grep -qi '<app-root' /tmp/smoke.html; then
+        echo "ERREUR: smoke test - index Angular introuvable sur le port 80"
+        exit 1
+      fi
+      if grep -q '"timestamp"' /tmp/smoke.html; then
+        echo "ERREUR: smoke test - reponse JSON Spring Boot detectee (confusion de port/conteneur)"
+        exit 1
+      fi
+      echo "Smoke test OK : le frontend Angular est servi sur le port 80"

@@ -1,8 +1,9 @@
 <#
 .SYNOPSIS
-    Script de déploiement Docker pour Raspberry Pi 4
+    Script de déploiement MANUEL de secours (si GitLab est indisponible).
 .DESCRIPTION
-    Construit l'image Docker pour ARM64, la transfère sur la Raspberry Pi et la déploye.
+    Construit l'image Docker pour ARM64, la transfère sur la Raspberry Pi et la déploie.
+    En temps normal, la CI GitLab déploie automatiquement au push sur master (issue #1).
 .EXAMPLE
     .\scripts\deploy.ps1
 #>
@@ -10,14 +11,14 @@
 param (
     [string]$ImageName = "gestion-photos-frontend",
     [string]$ImageTag = "latest",
-    [string]$RaspberryIp = "192.168.1.100",
+    [string]$RaspberryHost = "nuestra-traviesa",
     [string]$RaspberryUser = "pi",
     [int]$RaspberrySshPort = 22,
-    [int]$RaspberryDockerPort = 8080,
-    [string]$ApiBaseUrl = "http://localhost:8080"
+    [int]$RaspberryDockerPort = 80,
+    [string]$ApiBaseUrl = "http://nuestra-traviesa:8080"
 )
 
-Write-Host "=== Déploiement de GestionPhotos Frontend sur Raspberry Pi 4 ===" -ForegroundColor Cyan
+Write-Host "=== Déploiement manuel de GestionPhotos Frontend sur la Raspberry Pi ===" -ForegroundColor Cyan
 
 # Charger les variables d'environnement si .env existe
 if (Test-Path ".env") {
@@ -31,10 +32,10 @@ if (Test-Path ".env") {
             $envVars[$key] = $value
         }
     }
-    
+
     if ($envVars.ContainsKey("IMAGE_NAME")) { $ImageName = $envVars["IMAGE_NAME"] }
     if ($envVars.ContainsKey("IMAGE_TAG")) { $ImageTag = $envVars["IMAGE_TAG"] }
-    if ($envVars.ContainsKey("RASPBERRY_IP")) { $RaspberryIp = $envVars["RASPBERRY_IP"] }
+    if ($envVars.ContainsKey("RASPBERRY_HOST")) { $RaspberryHost = $envVars["RASPBERRY_HOST"] }
     if ($envVars.ContainsKey("RASPBERRY_USER")) { $RaspberryUser = $envVars["RASPBERRY_USER"] }
     if ($envVars.ContainsKey("RASPBERRY_SSH_PORT")) { $RaspberrySshPort = [int]$envVars["RASPBERRY_SSH_PORT"] }
     if ($envVars.ContainsKey("RASPBERRY_DOCKER_PORT")) { $RaspberryDockerPort = [int]$envVars["RASPBERRY_DOCKER_PORT"] }
@@ -45,109 +46,89 @@ $FullImageName = "$ImageName`:$ImageTag"
 $TarFile = "$ImageName`-$ImageTag.tar"
 
 Write-Host "Image: $FullImageName" -ForegroundColor Yellow
-Write-Host "Raspberry Pi: $RaspberryUser@$RaspberryIp`:$RaspberrySshPort" -ForegroundColor Yellow
+Write-Host "Raspberry Pi: $RaspberryUser@$RaspberryHost`:$RaspberrySshPort" -ForegroundColor Yellow
 Write-Host "Port de déploiement: $RaspberryDockerPort" -ForegroundColor Yellow
 
 # Étape 1: Construire l'image pour ARM64
 Write-Host "`n=== Construction de l'image Docker pour ARM64 ===" -ForegroundColor Green
-try {
-    docker build --platform linux/arm64 -t $FullImageName .
-    if ($LASTEXITCODE -ne 0) {
-        throw "Build Docker échoué"
-    }
-} catch {
-    Write-Host "ERREUR: $($_.Exception.Message)" -ForegroundColor Red
+docker build --platform linux/arm64 -t $FullImageName .
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERREUR: Build Docker échoué" -ForegroundColor Red
     exit 1
 }
 
 # Étape 2: Sauvegarder l'image dans un fichier tar
 Write-Host "`n=== Sauvegarde de l'image ===" -ForegroundColor Green
-try {
-    docker save $FullImageName | Out-File -FilePath $TarFile -Encoding byte
-    if ($LASTEXITCODE -ne 0) {
-        throw "Sauvegarde Docker échouée"
-    }
-} catch {
-    Write-Host "ERREUR: $($_.Exception.Message)" -ForegroundColor Red
+docker save -o $TarFile $FullImageName
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERREUR: Sauvegarde Docker échouée" -ForegroundColor Red
     exit 1
 }
 
 # Étape 3: Transférer l'image vers la Raspberry Pi
 Write-Host "`n=== Transfert vers Raspberry Pi ===" -ForegroundColor Green
-try {
-    # Utilisation de scp via WinSCP ou OpenSSH Windows
-    if (Get-Command scp -ErrorAction SilentlyContinue) {
-        scp -P $RaspberrySshPort $TarFile $RaspberryUser@$RaspberryIp`:/tmp/
-    } elseif (Get-Command pscp -ErrorAction SilentlyContinue) {
-        pscp -P $RaspberrySshPort -pw (Read-Host "Mot de passe SSH" -AsSecureString | ConvertFrom-SecureString) $TarFile $RaspberryUser@$RaspberryIp`:/tmp/
-    } else {
-        throw "SCP non trouvé. Installez OpenSSH Client (Windows Feature) ou WinSCP"
-    }
-    
-    if ($LASTEXITCODE -ne 0) {
-        throw "Transfert SCP échoué"
-    }
-} catch {
-    Write-Host "ERREUR: $($_.Exception.Message)" -ForegroundColor Red
+if (Get-Command scp -ErrorAction SilentlyContinue) {
+    scp -P $RaspberrySshPort $TarFile "${RaspberryUser}@${RaspberryHost}:/tmp/"
+} else {
+    Write-Host "ERREUR: SCP non trouvé. Installez OpenSSH Client (Fonctionnalité Windows)" -ForegroundColor Red
+    exit 1
+}
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERREUR: Transfert SCP échoué" -ForegroundColor Red
     Write-Host "Vous pouvez copier manuellement le fichier $TarFile vers /tmp/ sur la Raspberry" -ForegroundColor Yellow
-    Write-Host "Puis exécuter: ssh $RaspberryUser@$RaspberryIp `"docker load < /tmp/$TarFile && docker run -d -p $RaspberryDockerPort:80 -e API_BASE_URL=$ApiBaseUrl --name $ImageName $FullImageName`"" -ForegroundColor Yellow
     exit 1
 }
 
 # Étape 4: Charger et démarrer sur la Raspberry Pi
 Write-Host "`n=== Déploiement sur Raspberry Pi ===" -ForegroundColor Green
-try {
-    $sshCommand = @"
-    echo "Chargement de l'image Docker..."
-    docker load < /tmp/$TarFile
-    
-    echo "Arrêt du container existant..."
-    docker stop $ImageName 2>/dev/null || true
-    docker rm $ImageName 2>/dev/null || true
-    
-    echo "Démarrage du nouveau container..."
-    docker run -d `
-        --name $ImageName `
-        -p $RaspberryDockerPort:80 `
-        -e API_BASE_URL='$ApiBaseUrl' `
-        --restart unless-stopped `
+$sshCommand = @"
+set -e
+echo "Chargement de l'image Docker..."
+docker load < /tmp/$TarFile
+
+echo "Arrêt du container existant..."
+docker stop $ImageName 2>/dev/null || true
+docker rm $ImageName 2>/dev/null || true
+
+echo "Démarrage du nouveau container..."
+docker run -d ``
+        --name $ImageName ``
+        -p ${RaspberryDockerPort}:80 ``
+        -e API_BASE_URL='$ApiBaseUrl' ``
+        --restart unless-stopped ``
         $FullImageName
-    
-    echo "Nettoyage..."
-    rm /tmp/$TarFile
-    
-    echo "Container démarré avec succès!"
-    echo "Accès: http://$RaspberryIp`:$RaspberryDockerPort"
+
+rm /tmp/$TarFile
+
+echo "Vérification que le frontend répond..."
+sleep 3
+if curl -fsS http://localhost:${RaspberryDockerPort}/ | grep -qi '<app-root'; then
+    echo "Container démarré avec succès !"
+    echo "Accès: http://${RaspberryHost}:${RaspberryDockerPort}"
+else
+    echo "ATTENTION: le container est démarré mais ne sert pas l'index Angular."
+    echo "Vérifiez: docker logs $ImageName"
+    exit 1
+fi
 "@
-    
-    # Utilisation de ssh
-    if (Get-Command ssh -ErrorAction SilentlyContinue) {
-        ssh -p $RaspberrySshPort $RaspberryUser@$RaspberryIp $sshCommand
-    } elseif (Get-Command plink -ErrorAction SilentlyContinue) {
-        plink -P $RaspberrySshPort $RaspberryUser@$RaspberryIp $sshCommand
-    } else {
-        throw "SSH non trouvé"
-    }
-    
-    if ($LASTEXITCODE -ne 0) {
-        throw "Déploiement SSH échoué"
-    }
-} catch {
-    Write-Host "ERREUR: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "Exécutez manuellement sur la Raspberry:" -ForegroundColor Yellow
-    Write-Host "  docker load < /tmp/$TarFile" -ForegroundColor Yellow
-    Write-Host "  docker stop $ImageName 2>/dev/null || true && docker rm $ImageName 2>/dev/null || true" -ForegroundColor Yellow
-    Write-Host "  docker run -d --name $ImageName -p $RaspberryDockerPort:80 -e API_BASE_URL=$ApiBaseUrl --restart unless-stopped $FullImageName" -ForegroundColor Yellow
+
+if (Get-Command ssh -ErrorAction SilentlyContinue) {
+    ssh -p $RaspberrySshPort "${RaspberryUser}@${RaspberryHost}" $sshCommand
+} else {
+    Write-Host "ERREUR: SSH non trouvé" -ForegroundColor Red
+    exit 1
+}
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERREUR: Déploiement SSH échoué" -ForegroundColor Red
     exit 1
 }
 
 # Étape 5: Nettoyage local
 Write-Host "`n=== Nettoyage local ===" -ForegroundColor Green
-try {
-    Remove-Item $TarFile -Force
-} catch {
-    Write-Host "Avertissement: Impossible de supprimer $TarFile" -ForegroundColor Yellow
-}
+Remove-Item $TarFile -Force -ErrorAction SilentlyContinue
 
-Write-Host "`n=== Déploiement terminé avec succès! ===" -ForegroundColor Green
-Write-Host "Application disponible sur: http://$RaspberryIp`:$RaspberryDockerPort" -ForegroundColor Cyan
+Write-Host "`n=== Déploiement terminé avec succès ! ===" -ForegroundColor Green
+Write-Host "Application disponible sur: http://${RaspberryHost}:${RaspberryDockerPort}" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Note: au prochain déploiement CI, le conteneur manuel sera remplacé" -ForegroundColor Gray
+Write-Host "automatiquement par le conteneur docker compose." -ForegroundColor Gray
