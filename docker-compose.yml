@@ -1,16 +1,17 @@
-version: '3.8'
+# Frontend GestionPhotos — aligné sur la réalité de la prod :
+# frontend sur le port 80 (le backend Spring Boot occupe le 8080).
+#
+# L'image vient du Container Registry GitLab lors des déploiements CI
+# (variable FRONTEND_IMAGE), avec l'image locale en valeur de repli
+# pour un déploiement manuel de secours (scripts/deploy.sh).
+# API_BASE_URL est lu depuis un .env local à la Pi (voir setup-pi-runner.sh).
 
 services:
   frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: gestion-photos-frontend:latest
+    image: ${FRONTEND_IMAGE:-gestion-photos-frontend:latest}
     container_name: gestion-photos-frontend
     ports:
-      - "8080:80"
+      - "80:80"
     environment:
-      API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
+      API_BASE_URL: ${API_BASE_URL:-http://nuestra-traviesa:8080}
     restart: unless-stopped
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
