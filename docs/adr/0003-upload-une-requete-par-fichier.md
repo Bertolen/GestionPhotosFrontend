@@ -1,0 +1,12 @@
+# Une requête par fichier pour l'upload massif
+
+L'upload massif envoie aujourd'hui tous les fichiers en une seule requête multipart (`POST /upload/multiple-with-date`) : plusieurs minutes sans feedback, un message d'erreur vague, et trois limites dures qui finissent par mordre (100 fichiers/contrôleur, 210 parts Tomcat, 1 Go `max-request-size`). La spec retient **une requête par fichier** via l'endpoint existant `/upload/single-with-date` (repli `/upload` pour un fichier sans date exploitable), avec **concurrence 3** : le lot devient annulable, chaque fichier a son propre état (réussie / ignorée-doublon / échouée) et son rejeu manuel, et les limites dures disparaissent avec les endpoints lot. **L'idée ZIP du propriétaire est rejetée** — gain mesuré ≈ 3 % sur de vrais JPEG déjà compressés, extraction sur la Pi, tout-ou-rien, aucune progression par fichier — et tus/chunked comme surdimensionné pour des fichiers de quelques Mo sur LAN.
+
+## Conséquences
+
+- Les endpoints lot (`/upload/multiple`, `/upload/multiple-with-date`) et la limite `max-files-per-upload` sont retirés du backend et du frontend ; `max-file-size` **reste à 1 Go par fichier**, porte volontairement ouverte à l'évolution vidéo (la validation MIME images-only reste le garde-fou actuel).
+- La session d'upload vit dans un service singleton : elle survit à la navigation, l'entrée fichier est verrouillée pendant un lot, et un rechargement de page perd le lot en cours — assumé, pas de persistance.
+- Barre de progression globale « X/N fichiers » (pas de pourcentage par fichier) ; timeout ~2 min par requête ; rejeu manuel (« Rejouer » par fichier échoué + « Rejouer les échecs »), pas de rejeu automatique ; un doublon (409) est une information, pas un échec, et n'est pas rejouable.
+- Correctifs backend associés : corps d'erreur JSON `{code, message}` (400/500 vides aujourd'hui), `MaxUploadSizeExceededException` → 413, anti-doublon timestamp via l'index mémoire (décision « Service de la liste des photos à l'échelle ») au lieu d'un `Files.walk` par fichier stocké — la règle (timestamp à la seconde + extension) est inchangée.
+- Pas de rafraîchissement live de la galerie pendant l'upload : elle recharge à chaque navigation ; fin de lot = bilan + « Aller à la galerie ».
+- Détail de la décision : ticket wayfinder « Décision — Upload massif avec progression » (GestionPhotosFrontend #7) ; recherche sur la branche jetable `research/mecanismes-upload-massif` ; termes dans `GLOSSARY.md` (« Lot », « Doublon »).

@@ -55,3 +55,11 @@ _Avoid_ : Mois manquant.
 **Filtre libre** :
 Une plage de dates arbitraire choisie par l'utilisateur, option avancée qui remplace la vue mois tant qu'elle est active.
 _Avoid_ : Filtre personnalisé, filtre avancé.
+
+**Lot** :
+L'ensemble de fichiers soumis ensemble à l'upload par l'utilisateur ; unité de progression, d'annulation et de bilan — un échec ou une annulation n'engage jamais que le lot en cours, jamais la bibliothèque.
+_Avoid_ : Batch, requête groupée (un lot n'est pas une requête).
+
+**Doublon** :
+Une photo dont le timestamp à la seconde et l'extension existent déjà dans le stockage ; soumise à l'upload, elle est ignorée — deux photos prises dans la même seconde se voient ainsi refuser la seconde.
+_Avoid_ : Copie, fichier déjà présent (pour désigner la règle).
