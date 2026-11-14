@@ -28,6 +28,18 @@ _Avoid_ : Script d'installation, setup.
 Les valeurs lues par le conteneur au démarrage (URL du backend) sans rebuild, portées par le `.env` local à la Pi — par opposition à ce qui est figé dans l'image.
 _Avoid_ : Variables d'environnement de build, configuration Docker.
 
+**Miniature** :
+La version réduite d'une photo (360 px de long côté, JPEG ~0.8) générée côté serveur et servie par nginx depuis `/thumbs/` — la grille n'affiche jamais les originaux.
+_Avoid_ : Vignette, thumb, thumbnail.
+
+**Original** :
+La photo pleine résolution telle qu'envoyée, conservée dans le stockage ; elle ne quitte le serveur que pour un téléchargement, jamais pour l'affichage en grille.
+_Avoid_ : Photo (tout court) quand on veut désigner le fichier source.
+
+**Backfill** :
+Le rattrapage unique qui génère les miniatures des photos antérieures à la mise en place ; idempotent (il ne régénère pas une miniature existante), relancé au démarrage du serveur, il sert aussi de filet après un arrêt en plein travail.
+_Avoid_ : Migration, import initial.
+
 **Vue mois** :
 La tranche de la galerie affichant les photos d'un seul mois civil, défini par le mois de création de chaque photo.
 _Avoid_ : Page, galerie du mois.
