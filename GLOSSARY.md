@@ -27,3 +27,19 @@ _Avoid_ : Script d'installation, setup.
 **Configuration d'exécution** :
 Les valeurs lues par le conteneur au démarrage (URL du backend) sans rebuild, portées par le `.env` local à la Pi — par opposition à ce qui est figé dans l'image.
 _Avoid_ : Variables d'environnement de build, configuration Docker.
+
+**Vue mois** :
+La tranche de la galerie affichant les photos d'un seul mois civil, défini par le mois de création de chaque photo.
+_Avoid_ : Page, galerie du mois.
+
+**Navigation par mois** :
+Le passage d'une vue mois à une autre en sautant les mois vides ; le mois affiché par défaut est le plus récent qui contient des photos.
+_Avoid_ : Pagination, scroll infini (pour ce mécanisme).
+
+**Mois vide** :
+Un mois civil ne contenant aucune photo ; la navigation par mois l'ignore.
+_Avoid_ : Mois manquant.
+
+**Filtre libre** :
+Une plage de dates arbitraire choisie par l'utilisateur, option avancée qui remplace la vue mois tant qu'elle est active.
+_Avoid_ : Filtre personnalisé, filtre avancé.
